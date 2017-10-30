@@ -194,6 +194,12 @@
 
             int depth = -1; string s = GetParam("--depth", args);
 
+            if (string.Equals(s, "all", StringComparison.OrdinalIgnoreCase) 
+                            || string.Equals(s, "inf", StringComparison.OrdinalIgnoreCase))
+            {
+                s = "-1";
+            }
+
             if (!string.IsNullOrWhiteSpace(s))
             {
                 if (!int.TryParse(s, out depth))

@@ -1,6 +1,7 @@
 ﻿namespace System.Text
 {
     using System;
+    using System.Collections.Generic;
 
     public static class _Parse
     {
@@ -12,8 +13,11 @@
             }
         }
 
-        static void ParseTag(string BUFFER, ref int i, int ln, Action<string> href)
+        static void ParseTag(string BUFFER, ref int i, int ln, 
+            Action<string> href, out string tagName, out char tagType)
         {
+            tagType = '\0'; tagName = null;
+
             if (i >= ln || BUFFER[i] != '<')
             {
                 throw new InvalidOperationException();
@@ -23,7 +27,7 @@
 
             if (i < ln)
             {
-                char tagType = BUFFER[i];
+                tagType = BUFFER[i];
 
                 switch (tagType)
                 {
@@ -37,7 +41,12 @@
                             while (i < ln && char.IsLetter(BUFFER[i]))
                             {
                                 i++;
-                            }                            
+                            }
+
+                            if (i > tagStart)
+                            {
+                                tagName = BUFFER.Substring(tagStart, i - tagStart);
+                            }
                         }
 
                         break;
@@ -55,6 +64,12 @@
                             {
                                 i++;
                             }
+
+                            if (i > tagStart)
+                            {
+                                tagName = BUFFER.Substring(tagStart, i - tagStart);
+                            }
+
                         }                    
 
                         break;
@@ -69,15 +84,17 @@
                             while (i < ln && char.IsLetter(BUFFER[i]))
                             {
                                 i++;
-                            }
+                            } 
 
                             if (i > tagStart)
                             {
+                                tagName = BUFFER.Substring(tagStart, i - tagStart);
+
                                 SkipAttributes(
                                     BUFFER, 
                                     ref i, 
-                                    ln, 
-                                    BUFFER.Substring(tagStart, i - tagStart),
+                                    ln,
+                                    tagName,
                                     href);
                             }
 
@@ -178,7 +195,7 @@
             }
         }
 
-        static void ParseText(string BUFFER, Action<string> emit, ref int i, int ln)
+        static void ParseText(string BUFFER, Action<string, string> emit, ref int i, int ln, string tagName)
         {
             int start = i;
 
@@ -191,29 +208,100 @@
 
             if (emit != null && i > start)
             {
-                emit(BUFFER.Substring(start, i - start));
+                emit(tagName, BUFFER.Substring(start, i - start));
             }
         }
 
-        public static void Strict(string BUFFER, Action<string> emit, Action<string> href)
+        private class TagNode
+        {
+            /// <summary>
+            /// Top
+            /// </summary>
+            public TagNode Top;
+
+            /// <summary>
+            /// Name
+            /// </summary>
+            public string Name;
+        }
+
+        public static void Strict(string BUFFER, Action<string, string> emit, Action<string> href)
         {
             if (string.IsNullOrWhiteSpace(BUFFER))
             {
                 return;
             }
 
+            ISet<string> SelfClosing = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+            SelfClosing.Add("area");
+            SelfClosing.Add("base");
+            SelfClosing.Add("br");
+            SelfClosing.Add("col");
+            SelfClosing.Add("embed");
+            SelfClosing.Add("hr");
+            SelfClosing.Add("img");
+            SelfClosing.Add("input");
+            SelfClosing.Add("keygen");
+            SelfClosing.Add("meta");
+            SelfClosing.Add("param");
+            SelfClosing.Add("source");
+            SelfClosing.Add("track");
+            SelfClosing.Add("wbr");
+
             var i = 0; var ln = BUFFER.Length;
+
+            TagNode STACK = null;
 
             while (i < ln)
             {
                 if (BUFFER[i] == '<')
                 {
-                    ParseTag(BUFFER, ref i, ln, href);
+                    string tagName = null; char tagType = '\0';
+
+                    ParseTag(BUFFER, ref i, ln, href, out tagName, out tagType);
+
+                    if (!string.IsNullOrWhiteSpace(tagName))
+                    {
+                        if (tagType == '/')
+                        {
+                            TagNode top = STACK;
+
+                            while (top != null)
+                            {
+                                if (string.Equals(top.Name, tagName, StringComparison.OrdinalIgnoreCase))
+                                {
+                                    STACK = top.Top;
+                                    break;
+                                }
+                                top = top.Top;
+                            }
+                        }
+                        else if (tagType == '!')
+                        {
+                        }
+                        else
+                        {
+                            if (!SelfClosing.Contains(tagName))
+                            {
+                                TagNode top = new TagNode()
+                                {
+                                    Top = STACK,
+                                    Name = tagName
+                                };
+
+                                STACK = top;
+                            }
+                        }
+                    }
                 }
 
                 else
                 {
-                    ParseText(BUFFER, emit, ref i, ln);
+                    ParseText(BUFFER,
+                        emit,
+                        ref i, ln,
+                        STACK != null ? STACK.Name : string.Empty);
                 }
             }
         }

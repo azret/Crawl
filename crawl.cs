@@ -58,7 +58,7 @@
             return null;
         }
 
-        static void Crawl(Uri uri, ISet<Uri> visited = null)
+        static void Crawl(Uri uri, ISet<Uri> visited = null, Action<StringBuilder> doc = null)
         {
             if (visited == null)
             {
@@ -105,11 +105,43 @@
 
             Console.WriteLine();
 
+            StringBuilder DOC = new StringBuilder();
+
+            ISet<string> TextTags = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+            TextTags.Add("a");
+            TextTags.Add("span");
+            TextTags.Add("p");
+            TextTags.Add("article");
+            TextTags.Add("div");
+            TextTags.Add("h1");
+            TextTags.Add("h2");
+            TextTags.Add("h3");
+            TextTags.Add("h4");
+            TextTags.Add("h5");
+            TextTags.Add("h6");
+            TextTags.Add("i");
+            TextTags.Add("b");
+            TextTags.Add("em");
+            TextTags.Add("s");
+            TextTags.Add("strong");
+            TextTags.Add("q");
+
             _Parse.Strict(data,
 
-                (word) =>
+                (tagName, text) =>
                 {
-
+                    if (string.Equals(tagName, "title", StringComparison.OrdinalIgnoreCase))
+                    {
+                        Console.WriteLine($"Title: {text.Trim()}");
+                    }
+                    else
+                    {
+                        if (TextTags.Contains(tagName))
+                        {
+                            DOC.Append(text);
+                        }
+                    }
                 },
 
                 (href) =>
@@ -118,30 +150,30 @@
 
                     if (target != null)
                     {
-                        Crawl(target, visited);
+                        Crawl(target, visited, doc);
                     }                     
                 }
             );
+
+            if (doc != null)
+            {
+                doc(DOC);
+            }
         }
 
         static void Main(string[] args)
         {
             string uri = string.Empty;
 
-            if (args != null && args.Length == 1)
-            {
-                uri = args[0];
-            }
-            else
-            {
-                uri = GetParam("--uri", args);
-            }
-            
+            uri = GetParam("--uri", args);
+
             if (uri == null)
             {
-                uri = "https://www.w3.org/TR/html5/";
+                uri = "https://google.com";
             }
-             
+
+            string verbose = GetParam("--verbose", args);
+
             ISet<Uri> visited = new HashSet<Uri>();
 
             System.Console.CancelKeyPress += (sender, e) =>
@@ -153,13 +185,17 @@
 
             try
             {
-                Crawl(new Uri(uri), visited);
+                Crawl(new Uri(uri), visited, (doc) =>
+                {
+                     
+                });
 
-                Console.ResetColor();
+                Console.ForegroundColor = ConsoleColor.White;
                 Console.WriteLine();
                 Console.WriteLine($"Visited: {visited.Count}");
                 Console.WriteLine($"Elasped: {timer.ElapsedMilliseconds / 1000.0}s");
                 Console.WriteLine();
+                Console.ResetColor();
                 Console.WriteLine("Done.");
             }
             catch (Exception e)

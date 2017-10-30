@@ -5,6 +5,7 @@
     using System.Diagnostics;
     using System.IO;
     using System.Net;
+    using System.Security.Cryptography;
     using System.Text;
 
     unsafe class _Crawl
@@ -58,11 +59,11 @@
             return null;
         }
 
-        static void Crawl(Uri uri, int depth, ISet<Uri> visited, ISet<Uri> missing, Action<StringBuilder> doc = null) { Crawl(uri, depth, 0, visited, missing, doc); }
+        static void Crawl(Uri uri, int depth, ISet<Uri> visited, ISet<Uri> missing, Action<string, string, Uri> doc = null) { Crawl(uri, depth, 0, visited, missing, doc); }
         static void Crawl(Uri uri, int depth, int level, 
             ISet<Uri> visited = null,
             ISet<Uri> missing = null,
-            Action<StringBuilder> doc = null)
+            Action<string, string, Uri> doc = null)
         { 
             if (level >= depth)
             {
@@ -87,7 +88,7 @@
 
             Exception error = null; int status; Stopwatch timer = Stopwatch.StartNew();
 
-            string data = _Xdr.Xdr(
+            string HTML = _Xdr.Xdr(
                  uri,
                  "GET",
                  null,
@@ -119,7 +120,7 @@
 
             Console.WriteLine();
 
-            StringBuilder DOC = new StringBuilder();
+            StringBuilder PLAIN = new StringBuilder();
 
             ISet<string> TextTags = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
@@ -141,7 +142,7 @@
             TextTags.Add("strong");
             TextTags.Add("q");
 
-            _Parse.Strict(data,
+            _Parse.Strict(HTML,
 
                 (tagName, text) =>
                 {
@@ -158,7 +159,7 @@
                     {
                         if (TextTags.Contains(tagName))
                         {
-                            DOC.Append(clean);
+                            PLAIN.Append(clean);
                         }
                     }
                 },
@@ -176,7 +177,7 @@
 
             if (doc != null)
             {
-                doc(DOC);
+                doc(HTML, PLAIN.ToString(), uri);
             }
         }
 
@@ -220,11 +221,39 @@
 
             try
             {
-                Crawl(new Uri(url), depth, visited, missing, (doc) =>
+                string cache = GetParam("--cache", args);
+
+                if (cache == null)
+                {
+                }
+                else
+                {
+                    if (string.IsNullOrWhiteSpace(cache))
+                    {
+                        cache = ".cache";
+                    } 
+
+                    cache = Path.GetFullPath(cache);
+
+                    if (!Directory.Exists(cache))
+                    {
+                        Directory.CreateDirectory(cache);
+                    }
+                }
+
+                Crawl(new Uri(url), depth, visited, missing, (html, plain, uri) =>
                 {
                     if (verbose != null)
                     {
-                        Console.WriteLine(doc);
+                        Console.WriteLine(plain);
+                    }
+
+                    if (cache != null)
+                    {
+                        string md5 = _MD5.MD5(uri.ToString());
+
+                        File.WriteAllText(Path.Combine(cache, $"{md5}.original"), html, Encoding.UTF8);
+                        File.WriteAllText(Path.Combine(cache, $"{md5}.plain"), plain, Encoding.UTF8);
                     }
                 });
 

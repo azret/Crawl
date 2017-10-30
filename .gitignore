@@ -1,0 +1,8 @@
+﻿#
+
+/whitakar
+/obj
+/.vs
+*._
+/crawl.pdb
+/crawl.exe

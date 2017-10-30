@@ -4,14 +4,14 @@ Crawl is a command line tool used to extract large amounts of text from the Web 
 
 ## Getting Started
 
-### --uri
+### --url <string>
 
-```
-crawl --uri https://www.w3.org/TR/html5/
-```
+Specifies the starting URL to be crawled.
 
-### --depth
+**crawl** --**url** https://www.w3.org/TR/html5/
 
-```
-crawl --uri https://www.w3.org/TR/html5/ --depth 1
-```
+### --depth <int>
+
+Specifies the allowed depth.
+
+**crawl** --uri https://www.w3.org/TR/html5/ **--depth** 1

@@ -174,13 +174,13 @@
 
         static void Main(string[] args)
         {
-            string uri = string.Empty;
+            string url = string.Empty;
 
-            uri = GetParam("--uri", args);
+            url = GetParam("--url", args);
 
-            if (uri == null)
+            if (url == null)
             {
-                uri = "https://google.com";
+                url = "https://www.w3.org/TR/html5/";
             }
 
             int depth = -1; string s = GetParam("--depth", args);
@@ -210,7 +210,7 @@
 
             try
             {
-                Crawl(new Uri(uri), depth, visited, (doc) =>
+                Crawl(new Uri(url), depth, visited, (doc) =>
                 {
                      
                 });

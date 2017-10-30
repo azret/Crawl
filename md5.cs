@@ -1,4 +1,4 @@
-﻿namespace System.Security.Cryptography
+namespace System.Security.Cryptography
 {
     using System.Text;
 

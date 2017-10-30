@@ -145,18 +145,20 @@
 
                 (tagName, text) =>
                 {
+                    string clean = _Parse.Text(text);
+
                     if (string.Equals(tagName, "title", StringComparison.OrdinalIgnoreCase))
                     {
-                        if (!string.IsNullOrWhiteSpace(text))
+                        if (!string.IsNullOrWhiteSpace(clean))
                         {
-                            Console.WriteLine($"Title: {text.Trim()}");
+                            Console.WriteLine($"Title: {clean.Trim()}");
                         }
                     }
                     else
                     {
                         if (TextTags.Contains(tagName))
                         {
-                            DOC.Append(text);
+                            DOC.Append(clean);
                         }
                     }
                 },
@@ -220,7 +222,7 @@
             {
                 Crawl(new Uri(url), depth, visited, missing, (doc) =>
                 {
-                     
+                    Console.WriteLine(doc);
                 });
 
                 Console.ForegroundColor = ConsoleColor.White;

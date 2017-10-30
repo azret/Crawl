@@ -305,5 +305,143 @@
                 }
             }
         }
+
+        /// <summary>
+        /// Post processes the text replacing all found entities.
+        /// </summary>
+        public static string Text(string TEXT)
+        {
+            if (TEXT == null)
+            {
+                return null;
+            }
+
+            int i = 0; int ln = TEXT.Length; StringBuilder FRAGMENT = new StringBuilder();
+
+            while (i < ln)
+            {
+                if (TEXT[i] == '&')
+                {
+                    i++;
+
+                    if (i < ln && TEXT[i] == '#')
+                    {
+                        i++;
+
+                        int start = i;
+
+                        while (i < ln && char.IsDigit(TEXT[i]))
+                        {
+                            i++;
+                        }
+
+                        if (i > start)
+                        {
+                            int end = i;
+
+                            if (i < ln && TEXT[i] == ';')
+                            {
+                                i++;
+                            }
+
+                            string digits = TEXT.Substring(start, end - start);
+
+                            int val = 0;
+
+                            for (int k = digits.Length - 1; k >= 0; k--)
+                            {
+                                int chr = digits[k] - '0';
+
+                                int shift = (int)Math.Pow(10, (digits.Length - k - 1));
+
+                                val = val + (shift * chr);
+                            }
+
+                            FRAGMENT.Append($"{(char)val}");
+                        }
+                        else
+                        {
+                            FRAGMENT.Append("&#");
+                        }
+                    }
+                    else
+                    {
+                        int start = i;
+
+                        while (i < ln && char.IsLetter(TEXT[i]))
+                        {
+                            i++;
+                        }
+
+                        if (i > start)
+                        {
+                            int end = i;
+
+                            if (i < ln && TEXT[i] == ';')
+                            {
+                                i++;
+                            }
+
+                            string entity = TEXT.Substring(start, end - start).ToLowerInvariant();
+
+                            switch (entity)
+                            {
+                                case "nbsp":
+                                    FRAGMENT.Append(" ");
+                                    break;
+                                case "lt":
+                                    FRAGMENT.Append("<");
+                                    break;
+                                case "gt":
+                                    FRAGMENT.Append(">");
+                                    break;
+                                case "amp":
+                                    FRAGMENT.Append("&");
+                                    break;
+                                case "quot":
+                                    FRAGMENT.Append("\"");
+                                    break;
+                                case "apos":
+                                    FRAGMENT.Append("\'");
+                                    break;
+                                case "cent":
+                                    FRAGMENT.Append("¢");
+                                    break;
+                                case "pound":
+                                    FRAGMENT.Append("£");
+                                    break;
+                                case "yen":
+                                    FRAGMENT.Append("¥");
+                                    break;
+                                case "euro":
+                                    FRAGMENT.Append("€");
+                                    break;
+                                case "copy":
+                                    FRAGMENT.Append("©");
+                                    break;
+                                case "reg":
+                                    FRAGMENT.Append("®");
+                                    break;
+                                default:
+                                    FRAGMENT.Append($"&{entity};");
+                                    break;
+                            }
+                        }
+                        else
+                        {
+                            FRAGMENT.Append("&");
+                        }
+
+                    }
+                }
+                else
+                {
+                    FRAGMENT.Append(TEXT[i]);
+                    i++;
+                }
+            }
+
+            return FRAGMENT.ToString();
+        }
     }
 }

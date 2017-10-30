@@ -14,8 +14,16 @@ crawl --url https://www.w3.org/TR/html5/
 
 ### --depth <int>
 
-Specifies the allowed depth.
+Specifies the allowed depth level.
 
 ```
-crawl --url https://www.w3.org/TR/html5/ --depth 1
+crawl --url https://www.w3.org/TR/html5/ --depth 7
+```
+
+### --verbose
+
+If this flag is specified, the text is printed out to console during the crawl process.
+
+```
+crawl --url https://www.w3.org/TR/html5/ --verbose
 ```

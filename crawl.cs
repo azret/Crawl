@@ -222,7 +222,10 @@
             {
                 Crawl(new Uri(url), depth, visited, missing, (doc) =>
                 {
-                    Console.WriteLine(doc);
+                    if (verbose != null)
+                    {
+                        Console.WriteLine(doc);
+                    }
                 });
 
                 Console.ForegroundColor = ConsoleColor.White;
@@ -244,10 +247,14 @@
 
         static string GetParam(string key, string[] args)
         {
+            string value = null;
+
             for (int i = 0; args != null && i < args.Length; i++)
             {
                 if (String.Equals(args[i].Trim(), key, StringComparison.OrdinalIgnoreCase))
                 {
+                    value = string.Empty;
+
                     if (i < args.Length - 1)
                     {
                         int j = 0;
@@ -264,7 +271,7 @@
                             j++;
                         }
 
-                        StringBuilder value = new StringBuilder();
+                        StringBuilder buff = new StringBuilder();
 
                         while (args[i + 1] != null && j < args[i + 1].Length)
                         {
@@ -275,19 +282,19 @@
                                 break;
                             }
 
-                            value.Append(c);
+                            buff.Append(c);
                             j++;
                         }
 
-                        if (value.Length > 0)
+                        if (buff.Length > 0)
                         {
-                            return value.ToString();
+                            return buff.ToString();
                         }
                     }
                 }
             }
 
-            return null;
+            return value;
         }
     }
 }

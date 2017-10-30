@@ -58,8 +58,16 @@
             return null;
         }
 
-        static void Crawl(Uri uri, ISet<Uri> visited = null, Action<StringBuilder> doc = null)
-        {
+        static void Crawl(Uri uri, int depth, ISet<Uri> visited, Action<StringBuilder> doc = null) { Crawl(uri, depth, 0, visited, doc); }
+        static void Crawl(Uri uri, int depth, int level, 
+            ISet<Uri> visited = null,
+            Action<StringBuilder> doc = null)
+        { 
+            if (level >= depth)
+            {
+                return;
+            }
+
             if (visited == null)
             {
                 visited = new HashSet<Uri>();
@@ -133,7 +141,10 @@
                 {
                     if (string.Equals(tagName, "title", StringComparison.OrdinalIgnoreCase))
                     {
-                        Console.WriteLine($"Title: {text.Trim()}");
+                        if (!string.IsNullOrWhiteSpace(text))
+                        {
+                            Console.WriteLine($"Title: {text.Trim()}");
+                        }
                     }
                     else
                     {
@@ -150,7 +161,7 @@
 
                     if (target != null)
                     {
-                        Crawl(target, visited, doc);
+                        Crawl(target, depth, level + 1, visited, doc);
                     }                     
                 }
             );
@@ -172,6 +183,20 @@
                 uri = "https://google.com";
             }
 
+            int depth = -1; string s = GetParam("--depth", args);
+
+            if (!string.IsNullOrWhiteSpace(s))
+            {
+                if (!int.TryParse(s, out depth))
+                {
+                    Error($"--depth {s} is not valid.");
+                }
+            }
+            else
+            {
+                depth = 1;
+            }     
+
             string verbose = GetParam("--verbose", args);
 
             ISet<Uri> visited = new HashSet<Uri>();
@@ -185,7 +210,7 @@
 
             try
             {
-                Crawl(new Uri(uri), visited, (doc) =>
+                Crawl(new Uri(uri), depth, visited, (doc) =>
                 {
                      
                 });

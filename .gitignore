@@ -1,8 +1,9 @@
 ﻿#
 
-/whitakar
-/obj
 /.vs
 *._
+*.user
+/whitakar
+/obj
 /crawl.pdb
 /crawl.exe

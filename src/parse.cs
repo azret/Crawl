@@ -4,17 +4,17 @@
 
     public static class _Parse
     {
-        static void SkipWhite(string html, ref int i, int ln)
+        static void SkipWhite(string BUFFER, ref int i, int ln)
         {
-            while (i < ln && char.IsWhiteSpace(html[i]))
+            while (i < ln && char.IsWhiteSpace(BUFFER[i]))
             {
                 i++;
             }
         }
 
-        static void ParseTag(string html, ref int i, int ln, Action<string> href)
+        static void ParseTag(string BUFFER, ref int i, int ln, Action<string> href)
         {
-            if (i >= ln || html[i] != '<')
+            if (i >= ln || BUFFER[i] != '<')
             {
                 throw new InvalidOperationException();
             }
@@ -23,7 +23,7 @@
 
             if (i < ln)
             {
-                char tagType = html[i];
+                char tagType = BUFFER[i];
 
                 switch (tagType)
                 {
@@ -34,7 +34,7 @@
 
                             int tagStart = i;
 
-                            while (i < ln && char.IsLetter(html[i]))
+                            while (i < ln && char.IsLetter(BUFFER[i]))
                             {
                                 i++;
                             }                            
@@ -46,12 +46,12 @@
 
                         i++;
 
-                        SkipWhite(html, ref i, ln);
+                        SkipWhite(BUFFER, ref i, ln);
 
                         {
                             int tagStart = i;
 
-                            while (i < ln && char.IsLetter(html[i]))
+                            while (i < ln && char.IsLetter(BUFFER[i]))
                             {
                                 i++;
                             }
@@ -61,12 +61,12 @@
 
                     default:
 
-                        SkipWhite(html, ref i, ln);
+                        SkipWhite(BUFFER, ref i, ln);
 
                         {
                             int tagStart = i;
 
-                            while (i < ln && char.IsLetter(html[i]))
+                            while (i < ln && char.IsLetter(BUFFER[i]))
                             {
                                 i++;
                             }
@@ -74,10 +74,10 @@
                             if (i > tagStart)
                             {
                                 SkipAttributes(
-                                    html, 
+                                    BUFFER, 
                                     ref i, 
                                     ln, 
-                                    html.Substring(tagStart, i - tagStart),
+                                    BUFFER.Substring(tagStart, i - tagStart),
                                     href);
                             }
 
@@ -87,47 +87,47 @@
 
                 }
 
-                while (i < ln && html[i] != '>')
+                while (i < ln && BUFFER[i] != '>')
                 {
                     i++;
                 }
 
-                if (i < ln && html[i] == '>')
+                if (i < ln && BUFFER[i] == '>')
                 {
                     i++;
                 }
             } 
         }
 
-        static void SkipAttributes(string html, ref int i, int ln, string tagName, Action<string> href)
+        static void SkipAttributes(string BUFFER, ref int i, int ln, string tagName, Action<string> href)
         {
-            SkipWhite(html, ref i, ln);
+            SkipWhite(BUFFER, ref i, ln);
 
-            while (i < ln && char.IsLetter(html[i]))
+            while (i < ln && char.IsLetter(BUFFER[i]))
             {
                 int attrStart = i;
 
-                while (i < ln && char.IsLetter(html[i]))
+                while (i < ln && char.IsLetter(BUFFER[i]))
                 {
                     i++;
                 }
 
                 if (i > attrStart)
                 {
-                    string attrName = html.Substring(attrStart, i - attrStart);
+                    string attrName = BUFFER.Substring(attrStart, i - attrStart);
 
-                    SkipWhite(html, ref i, ln);
+                    SkipWhite(BUFFER, ref i, ln);
 
-                    if (i < ln && html[i] == '=')
+                    if (i < ln && BUFFER[i] == '=')
                     {
                         i++;
                     }
 
-                    SkipWhite(html, ref i, ln);
+                    SkipWhite(BUFFER, ref i, ln);
 
                     if (i < ln)
                     {
-                        char quote = html[i];
+                        char quote = BUFFER[i];
 
                         switch (quote)
                         {
@@ -136,18 +136,18 @@
 
                                 i++;
 
-                                SkipWhite(html, ref i, ln);
+                                SkipWhite(BUFFER, ref i, ln);
 
                                 int valueStart = i;
 
-                                while (i < ln && html[i] != quote)
+                                while (i < ln && (BUFFER[i] != quote && BUFFER[i] != '>'))
                                 {
                                     i++;
                                 }
 
                                 if (i > valueStart)
                                 {
-                                    string attrValue = html.Substring(valueStart, i - valueStart);
+                                    string attrValue = BUFFER.Substring(valueStart, i - valueStart);
 
                                     if ((tagName == "A" || tagName == "a") 
                                                         
@@ -165,7 +165,7 @@
 
                             default:
 
-                                while (i < ln && char.IsLetterOrDigit(html[i]))
+                                while (i < ln && char.IsLetterOrDigit(BUFFER[i]))
                                 {
                                     i++;
                                 }
@@ -178,42 +178,42 @@
             }
         }
 
-        static void ParseText(string html, Action<string> emit, ref int i, int ln)
+        static void ParseText(string BUFFER, Action<string> emit, ref int i, int ln)
         {
             int start = i;
 
             i++;
 
-            while (i < ln && html[i] != '<')
+            while (i < ln && BUFFER[i] != '<')
             {
                 i++;
             }
 
             if (emit != null && i > start)
             {
-                emit(html.Substring(start, i - start));
+                emit(BUFFER.Substring(start, i - start));
             }
         }
 
-        public static void Strict(string html, Action<string> emit, Action<string> href)
+        public static void Strict(string BUFFER, Action<string> emit, Action<string> href)
         {
-            if (string.IsNullOrWhiteSpace(html))
+            if (string.IsNullOrWhiteSpace(BUFFER))
             {
                 return;
             }
 
-            var i = 0; var ln = html.Length;
+            var i = 0; var ln = BUFFER.Length;
 
             while (i < ln)
             {
-                if (html[i] == '<')
+                if (BUFFER[i] == '<')
                 {
-                    ParseTag(html, ref i, ln, href);
+                    ParseTag(BUFFER, ref i, ln, href);
                 }
 
                 else
                 {
-                    ParseText(html, emit, ref i, ln);
+                    ParseText(BUFFER, emit, ref i, ln);
                 }
             }
         }

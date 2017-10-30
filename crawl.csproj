@@ -39,9 +39,12 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="crawl.cs" />
-    <Compile Include="parse.cs" />
-    <Compile Include="md5.cs" />
-    <Compile Include="xdr.cs" />
+    <Compile Include="src\parse.cs" />
+    <Compile Include="src\md5.cs" />
+    <Compile Include="src\xdr.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="README.md" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

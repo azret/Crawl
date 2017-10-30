@@ -73,7 +73,7 @@
             visited.Add(uri);
 
             Console.ForegroundColor = ConsoleColor.Yellow;
-            Console.Write($"Crawl - {uri}");
+            Console.Write($"GET {uri}");
             Console.ResetColor();
 
             Exception error = null; int status; Stopwatch timer = Stopwatch.StartNew();
@@ -126,6 +126,22 @@
 
         static void Main(string[] args)
         {
+            string uri = string.Empty;
+
+            if (args != null && args.Length == 1)
+            {
+                uri = args[0];
+            }
+            else
+            {
+                uri = GetParam("--uri", args);
+            }
+            
+            if (uri == null)
+            {
+                uri = "https://www.w3.org/TR/html5/";
+            }
+             
             ISet<Uri> visited = new HashSet<Uri>();
 
             System.Console.CancelKeyPress += (sender, e) =>
@@ -137,7 +153,7 @@
 
             try
             {
-                Crawl(new Uri("http://www.thelatinlibrary.com"), visited);
+                Crawl(new Uri(uri), visited);
 
                 Console.ResetColor();
                 Console.WriteLine();
@@ -145,12 +161,61 @@
                 Console.WriteLine($"Elasped: {timer.ElapsedMilliseconds / 1000.0}s");
                 Console.WriteLine();
                 Console.WriteLine("Done.");
-                Console.ReadKey();
             }
             catch (Exception e)
             {
                 Error(e.Message);
             }
-        } 
+
+            Console.ReadKey();
+        }
+
+        static string GetParam(string key, string[] args)
+        {
+            for (int i = 0; args != null && i < args.Length; i++)
+            {
+                if (String.Equals(args[i].Trim(), key, StringComparison.OrdinalIgnoreCase))
+                {
+                    if (i < args.Length - 1)
+                    {
+                        int j = 0;
+
+                        while (args[i + 1] != null && j < args[i + 1].Length)
+                        {
+                            char c = args[i + 1][j];
+
+                            if (!Char.IsWhiteSpace(c))
+                            {
+                                break;
+                            }
+
+                            j++;
+                        }
+
+                        StringBuilder value = new StringBuilder();
+
+                        while (args[i + 1] != null && j < args[i + 1].Length)
+                        {
+                            char c = args[i + 1][j];
+
+                            if (Char.IsWhiteSpace(c))
+                            {
+                                break;
+                            }
+
+                            value.Append(c);
+                            j++;
+                        }
+
+                        if (value.Length > 0)
+                        {
+                            return value.ToString();
+                        }
+                    }
+                }
+            }
+
+            return null;
+        }
     }
 }

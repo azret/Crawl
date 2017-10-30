@@ -58,9 +58,10 @@
             return null;
         }
 
-        static void Crawl(Uri uri, int depth, ISet<Uri> visited, Action<StringBuilder> doc = null) { Crawl(uri, depth, 0, visited, doc); }
+        static void Crawl(Uri uri, int depth, ISet<Uri> visited, ISet<Uri> missing, Action<StringBuilder> doc = null) { Crawl(uri, depth, 0, visited, missing, doc); }
         static void Crawl(Uri uri, int depth, int level, 
             ISet<Uri> visited = null,
+            ISet<Uri> missing = null,
             Action<StringBuilder> doc = null)
         { 
             if (level >= depth)
@@ -104,6 +105,11 @@
             }
             else
             {
+                if (missing != null)
+                {
+                    missing.Add(uri);
+                }
+
                 Console.ForegroundColor = ConsoleColor.Red;
                 Console.Write($" [{status}]");
                 Console.ForegroundColor = ConsoleColor.White;
@@ -161,7 +167,7 @@
 
                     if (target != null)
                     {
-                        Crawl(target, depth, level + 1, visited, doc);
+                        Crawl(target, depth, level + 1, visited, missing, doc);
                     }                     
                 }
             );
@@ -191,6 +197,8 @@
                 {
                     Error($"--depth {s} is not valid.");
                 }
+
+                depth &= 0x7FFFFFFF;
             }
             else
             {
@@ -199,7 +207,7 @@
 
             string verbose = GetParam("--verbose", args);
 
-            ISet<Uri> visited = new HashSet<Uri>();
+            ISet<Uri> visited = new HashSet<Uri>(); ISet<Uri> missing = new HashSet<Uri>();
 
             System.Console.CancelKeyPress += (sender, e) =>
             {
@@ -210,15 +218,16 @@
 
             try
             {
-                Crawl(new Uri(url), depth, visited, (doc) =>
+                Crawl(new Uri(url), depth, visited, missing, (doc) =>
                 {
                      
                 });
 
                 Console.ForegroundColor = ConsoleColor.White;
                 Console.WriteLine();
-                Console.WriteLine($"Visited: {visited.Count}");
-                Console.WriteLine($"Elasped: {timer.ElapsedMilliseconds / 1000.0}s");
+                Console.WriteLine($"Pages Visited: {visited.Count}");
+                Console.WriteLine($"Missing Links: {missing.Count}");
+                Console.WriteLine($"Time: {timer.ElapsedMilliseconds / 1000.0}s");
                 Console.WriteLine();
                 Console.ResetColor();
                 Console.WriteLine("Done.");

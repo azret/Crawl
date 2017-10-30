@@ -23,6 +23,8 @@
                 throw new InvalidOperationException();
             }
 
+            int attrs = 0;
+
             i++;
 
             if (i < ln)
@@ -69,7 +71,7 @@
                             {
                                 tagName = BUFFER.Substring(tagStart, i - tagStart);
                             }
-
+                             
                         }                    
 
                         break;
@@ -90,7 +92,7 @@
                             {
                                 tagName = BUFFER.Substring(tagStart, i - tagStart);
 
-                                SkipAttributes(
+                                attrs = SkipAttributes(
                                     BUFFER, 
                                     ref i, 
                                     ln,
@@ -106,7 +108,19 @@
 
                 while (i < ln && BUFFER[i] != '>')
                 {
+                    bool isSelfClosing = false;
+
+                    if (i < ln && BUFFER[i] == '/')
+                    {
+                        isSelfClosing = true;
+                    }
+
                     i++;
+
+                    if (isSelfClosing && i < ln && BUFFER[i] == '>')
+                    {
+                        tagType = '>';
+                    }
                 }
 
                 if (i < ln && BUFFER[i] == '>')
@@ -116,8 +130,10 @@
             } 
         }
 
-        static void SkipAttributes(string BUFFER, ref int i, int ln, string tagName, Action<string> href)
+        static int SkipAttributes(string BUFFER, ref int i, int ln, string tagName, Action<string> href)
         {
+            int attrs = 0;
+
             SkipWhite(BUFFER, ref i, ln);
 
             while (i < ln && char.IsLetter(BUFFER[i]))
@@ -132,6 +148,8 @@
                 if (i > attrStart)
                 {
                     string attrName = BUFFER.Substring(attrStart, i - attrStart);
+
+                    attrs++;
 
                     SkipWhite(BUFFER, ref i, ln);
 
@@ -193,6 +211,8 @@
                     }
                 }
             }
+
+            return attrs;
         }
 
         static void ParseText(string BUFFER, Action<string, string> emit, ref int i, int ln, string tagName)
@@ -279,8 +299,13 @@
                         }
                         else if (tagType == '!')
                         {
+                            // Processing Instruction or Comment
                         }
-                        else
+                        else if (tagType == '>')
+                        {
+                            // Self Closing Tag
+                        }
+                        else if (char.IsLetter(tagType))
                         {
                             if (!SelfClosing.Contains(tagName))
                             {

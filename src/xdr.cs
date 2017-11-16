@@ -3,9 +3,9 @@
     using System.IO;
     using System.Text;
 
-    public static class _Xdr
+    public static class Xdr
     {
-        public static string Xdr(Uri uri, string method, 
+        public static string Execute(Uri uri, string method, 
             string data, string type,
             out int status, out Exception e, ICredentials credentials = null)
         {

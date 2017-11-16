@@ -39,7 +39,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="crawl.cs" />
-    <Compile Include="src\parse.cs" />
+    <Compile Include="src\pure.cs" />
     <Compile Include="src\md5.cs" />
     <Compile Include="src\xdr.cs" />
   </ItemGroup>

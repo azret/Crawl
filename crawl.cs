@@ -7,6 +7,7 @@
     using System.Net;
     using System.Security.Cryptography;
     using System.Text;
+    using System.Text.Html;
 
     unsafe class _Crawl
     {
@@ -26,7 +27,7 @@
 
         static Uri GetTargetUri(Uri uri, string href)
         {
-            if (href.StartsWith("//") || href.StartsWith("http", StringComparison.OrdinalIgnoreCase))
+            if (href.StartsWith("#") || href.StartsWith("//") || href.StartsWith("http", StringComparison.OrdinalIgnoreCase))
             {
                 return null;
             }
@@ -88,7 +89,7 @@
 
             Exception error = null; int status; Stopwatch timer = Stopwatch.StartNew();
 
-            string HTML = _Xdr.Xdr(
+            string HTML = Xdr.Execute(
                  uri,
                  "GET",
                  null,
@@ -120,48 +121,25 @@
 
             Console.WriteLine();
 
-            StringBuilder PLAIN = new StringBuilder();
+            StringBuilder PLAIN = new StringBuilder();       
+            
+            Parser.parse(HTML,
 
-            ISet<string> TextTags = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-
-            TextTags.Add("a");
-            TextTags.Add("span");
-            TextTags.Add("p");
-            TextTags.Add("article");
-            TextTags.Add("div");
-            TextTags.Add("h1");
-            TextTags.Add("h2");
-            TextTags.Add("h3");
-            TextTags.Add("h4");
-            TextTags.Add("h5");
-            TextTags.Add("h6");
-            TextTags.Add("i");
-            TextTags.Add("b");
-            TextTags.Add("em");
-            TextTags.Add("s");
-            TextTags.Add("strong");
-            TextTags.Add("q");
-
-            _Parse.Strict(HTML,
-
-                (tagName, text) =>
+                (tag) =>
                 {
-                    string clean = _Parse.Text(text);
-
-                    if (string.Equals(tagName, "title", StringComparison.OrdinalIgnoreCase))
+                    if (tag == "p" || tag == "P")
                     {
-                        if (!string.IsNullOrWhiteSpace(clean))
-                        {
-                            Console.WriteLine($"Title: {clean.Trim()}");
-                        }
+                        PLAIN.Append("\r\n");
                     }
                     else
                     {
-                        if (TextTags.Contains(tagName))
-                        {
-                            PLAIN.Append(clean);
-                        }
+                        PLAIN.Append(" ");
                     }
+                },
+                
+                (text) => 
+                {
+                    PLAIN.Append(Parser.praseText(text));
                 },
 
                 (href) =>
@@ -171,16 +149,15 @@
                     if (target != null)
                     {
                         Crawl(target, depth, level + 1, visited, missing, doc);
-                    }                     
-                }
-            );
-
-            if (doc != null)
-            {
+                    }
+                });
+                            
+            if (doc != null && status == 200 && HTML.Length > 0)
+            { 
                 doc(HTML, PLAIN.ToString(), uri);
             }
         }
-
+        
         static void Main(string[] args)
         {
             string url = string.Empty;
@@ -227,24 +204,16 @@
 
             try
             {
-                string cache = GetParam("--cache", args);
+                string dir = GetParam("--cache", args);
 
-                if (cache == null)
+                if (dir != null)
                 {
-                }
-                else
-                {
-                    if (string.IsNullOrWhiteSpace(cache))
+                    if (string.IsNullOrWhiteSpace(dir))
                     {
-                        cache = ".cache";
-                    } 
-
-                    cache = Path.GetFullPath(cache);
-
-                    if (!Directory.Exists(cache))
-                    {
-                        Directory.CreateDirectory(cache);
+                        dir = ".cache";
                     }
+
+                    dir = Path.GetFullPath(dir);
                 }
 
                 Crawl(new Uri(url), depth, visited, missing, (html, plain, uri) =>
@@ -254,12 +223,9 @@
                         Console.WriteLine(plain);
                     }
 
-                    if (cache != null)
+                    if (dir != null)
                     {
-                        string md5 = _MD5.MD5(uri.ToString());
-
-                        File.WriteAllText(Path.Combine(cache, $"{md5}.original"), html, Encoding.UTF8);
-                        File.WriteAllText(Path.Combine(cache, $"{md5}.plain"), plain, Encoding.UTF8);
+                        Cache(html, plain, uri, dir);
                     }
                 });
 
@@ -274,10 +240,32 @@
             }
             catch (Exception e)
             {
-                Error(e.Message);
+                Error(e.ToString());
             }
 
             Console.ReadKey();
+        }
+
+        static void Cache(string html, string plain, Uri uri, string dir)
+        {
+            var path = uri.AbsolutePath;
+
+            if (string.IsNullOrWhiteSpace(path) || path == "/")
+            {
+                path = "index";
+            }
+
+            path = path.Replace("/", "\\").Trim('\\');
+
+            string file = Path.Combine(dir, path);
+             
+            if (!Directory.Exists(Path.GetDirectoryName(file)))
+            {
+                Directory.CreateDirectory(Path.GetDirectoryName(file));
+            }
+
+            File.WriteAllText(file, html, Encoding.UTF8);
+            File.WriteAllText(Path.ChangeExtension(file, ".txt"), plain, Encoding.UTF8);
         }
 
         static string GetParam(string key, string[] args)

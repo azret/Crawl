@@ -2,7 +2,7 @@
 {
     using System;
     using System.Collections.Generic;
-
+    
     public static class _Parse
     {
         static void SkipWhite(string BUFFER, ref int i, int ln)
@@ -269,6 +269,21 @@
             SelfClosing.Add("track");
             SelfClosing.Add("wbr");
 
+            Func<string, bool> IsH = (string tagName) =>
+            {
+                switch (tagName)
+                {
+                    case "h1":
+                    case "h2":
+                    case "h3":
+                    case "h4":
+                    case "h5":
+                    case "h6":
+                        return true;
+                }
+                return false;
+            };
+
             var i = 0; var ln = BUFFER.Length;
 
             TagNode STACK = null;
@@ -284,7 +299,9 @@
                     if (!string.IsNullOrWhiteSpace(tagName))
                     {
                         if (tagType == '/')
-                        {
+                        { 
+                            // Strict
+                            
                             TagNode top = STACK;
 
                             while (top != null)
@@ -294,8 +311,9 @@
                                     STACK = top.Top;
                                     break;
                                 }
+
                                 top = top.Top;
-                            }
+                            }                            
                         }
                         else if (tagType == '!')
                         {
@@ -316,6 +334,14 @@
                                 };
 
                                 STACK = top;
+                            }
+
+                            if (tagName == "p" || tagName == "P")
+                            {
+                                if (emit != null)
+                                {
+                                    emit(tagName, "\r\n\r\n");
+                                }
                             }
                         }
                     }

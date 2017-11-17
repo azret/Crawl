@@ -6,8 +6,7 @@
     using System.IO;
     using System.Net;
     using System.Security.Cryptography;
-    using System.Text;
-    using System.Text.Html;
+    using System.Text; 
 
     unsafe class _Crawl
     {
@@ -60,11 +59,11 @@
             return null;
         }
 
-        static void Crawl(Uri uri, int depth, ISet<Uri> visited, ISet<Uri> missing, Action<string, string, Uri> doc = null) { Crawl(uri, depth, 0, visited, missing, doc); }
+        static void Crawl(Uri uri, int depth, ISet<Uri> visited, ISet<Uri> missing, Action<string, string, Uri, string> doc = null) { Crawl(uri, depth, 0, visited, missing, doc); }
         static void Crawl(Uri uri, int depth, int level, 
             ISet<Uri> visited = null,
             ISet<Uri> missing = null,
-            Action<string, string, Uri> doc = null)
+            Action<string, string, Uri, string> doc = null)
         { 
             if (level >= depth)
             {
@@ -89,7 +88,7 @@
 
             Exception error = null; int status; Stopwatch timer = Stopwatch.StartNew();
 
-            string HTML = Xdr.Execute(
+            string HTML = Http.Get(
                  uri,
                  "GET",
                  null,
@@ -99,11 +98,107 @@
 
             if (status == 200)
             {
+                StringBuilder PLAIN = new StringBuilder(); HashSet<Uri> LINKS = new HashSet<Uri>(); String TITLE = null;
+
+                System.Text.Html.parse(HTML,
+
+                    (tag, type) =>
+                    {
+                        if (type == '<' && (tag == "p" || tag == "P"))
+                        {
+                            if (PLAIN.Length > 0)
+                            {
+                                PLAIN.Append("\r\n");
+                            }
+                        }
+                        else if (String.Equals("BR", tag, StringComparison.OrdinalIgnoreCase))
+                        {
+                            if (PLAIN.Length > 0)
+                            {
+                                PLAIN.Append("\r\n");
+                            }
+                        }
+                        else if (tag == "h1" || tag == "H1" || tag == "h2" || tag == "H2"
+                                || tag == "h3" || tag == "H3" || tag == "h4" || tag == "H4"
+                                || tag == "h5" || tag == "H5" || tag == "h6" || tag == "H6")
+                        {
+                            if (PLAIN.Length > 0)
+                            {
+                                PLAIN.Append("\r\n");
+                            }
+                        }                        
+                        else
+                        {
+                            if (PLAIN.Length > 0)
+                            {
+                                PLAIN.Append(" ");
+                            }
+                        }
+                    },
+
+                    (title) =>
+                    {
+                        if (!string.IsNullOrWhiteSpace(title))
+                        {
+                            TITLE = title.Trim();
+                        }
+                    },
+
+                    (text) =>
+                    {
+                        var plain = System.Text.Html.praseText(text);
+
+                        if (string.IsNullOrWhiteSpace(plain))
+                        {
+                            if (PLAIN.Length > 0)
+                            {
+                                PLAIN.Append(plain);
+                            }
+                        }
+                        else
+                        {
+                            PLAIN.Append(plain);
+                        }
+                    },
+
+                    (href) =>
+                    {
+                        Uri target = GetTargetUri(uri, href);
+
+                        if (target != null)
+                        {
+                            LINKS.Add(target);
+                        }
+                    });
+
+                if (doc != null && status == 200 && HTML.Length > 0)
+                {
+                    if (!string.IsNullOrWhiteSpace(TITLE))
+                    {
+                        PLAIN.Insert(0, $"# {TITLE}\r\n\r\n");
+                    }
+
+                    doc(HTML, PLAIN.ToString(), uri, TITLE);
+                }
+
                 Console.ForegroundColor = ConsoleColor.Green;
                 Console.Write($" [{status}]");
                 Console.ForegroundColor = ConsoleColor.White;
                 Console.Write($" ({timer.ElapsedMilliseconds}ms)");
+
+                if (!string.IsNullOrWhiteSpace(TITLE))
+                {
+                    Console.ForegroundColor = ConsoleColor.Gray;
+                    Console.Write($" - {TITLE}");
+                }
+
                 Console.ResetColor();
+                Console.WriteLine();
+
+                foreach (var target in LINKS)
+                {
+                    Crawl(target, depth, level + 1, visited, missing, doc);
+                }
             }
             else
             {
@@ -117,44 +212,8 @@
                 Console.ForegroundColor = ConsoleColor.White;
                 Console.Write($" ({timer.ElapsedMilliseconds}ms)");
                 Console.ResetColor();
-            }
+                Console.WriteLine();
 
-            Console.WriteLine();
-
-            StringBuilder PLAIN = new StringBuilder();       
-            
-            Parser.parse(HTML,
-
-                (tag) =>
-                {
-                    if (tag == "p" || tag == "P")
-                    {
-                        PLAIN.Append("\r\n");
-                    }
-                    else
-                    {
-                        PLAIN.Append(" ");
-                    }
-                },
-                
-                (text) => 
-                {
-                    PLAIN.Append(Parser.praseText(text));
-                },
-
-                (href) =>
-                {
-                    Uri target = GetTargetUri(uri, href);
-
-                    if (target != null)
-                    {
-                        Crawl(target, depth, level + 1, visited, missing, doc);
-                    }
-                });
-                            
-            if (doc != null && status == 200 && HTML.Length > 0)
-            { 
-                doc(HTML, PLAIN.ToString(), uri);
             }
         }
         
@@ -216,7 +275,7 @@
                     dir = Path.GetFullPath(dir);
                 }
 
-                Crawl(new Uri(url), depth, visited, missing, (html, plain, uri) =>
+                Crawl(new Uri(url), depth, visited, missing, (html, plain, uri, title) =>
                 {
                     if (verbose != null)
                     {
@@ -225,7 +284,7 @@
 
                     if (dir != null)
                     {
-                        Cache(html, plain, uri, dir);
+                        Cache(html, plain, uri, dir, title);
                     }
                 });
 
@@ -246,7 +305,7 @@
             Console.ReadKey();
         }
 
-        static void Cache(string html, string plain, Uri uri, string dir)
+        static void Cache(string html, string plain, Uri uri, string dir, string title)
         {
             var path = uri.AbsolutePath;
 
@@ -264,7 +323,48 @@
                 Directory.CreateDirectory(Path.GetDirectoryName(file));
             }
 
-            File.WriteAllText(file, html, Encoding.UTF8);
+            path = Path.GetDirectoryName(file);
+
+            if (!string.IsNullOrWhiteSpace(title))
+            {
+                title = title
+                    .Replace("\\", ", ")
+                    .Replace("/", ", ")
+                    .Replace("-", " ")
+                    .Replace("|", "I")
+                    .Replace(": ", " - ")
+                    .Replace(":", " ")
+                    .Replace(".", " ")
+                    .Replace("<", " ")
+                    .Replace(">", " ")
+                    .Replace("\t", " ")
+                    .Replace("\n", " ")
+                    .Replace("\r", " ");
+
+                while (title.IndexOf("  ") >= 0)
+                {
+                    title = title.Replace("  ", " ");
+                }
+
+                try
+                {
+                    file = Path.ChangeExtension(Path.Combine(path, title), ".html");
+
+                    int i = 0;
+
+                    while (File.Exists(file))
+                    {
+                        file = Path.ChangeExtension(Path.Combine(path, title + $" [{i}]"), ".html");
+                        i++;
+                    }
+                }
+                catch
+                {
+                    file = Path.Combine(dir, path);
+                }
+            }
+            
+            File.WriteAllText(Path.ChangeExtension(file, ".html"), html, Encoding.UTF8);
             File.WriteAllText(Path.ChangeExtension(file, ".txt"), plain, Encoding.UTF8);
         }
 

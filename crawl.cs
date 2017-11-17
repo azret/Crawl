@@ -104,7 +104,7 @@
 
                     (tag, type) =>
                     {
-                        if (type == '<' && (tag == "p" || tag == "P"))
+                        if (tag == "p" || tag == "P")
                         {
                             if (PLAIN.Length > 0)
                             {
@@ -126,8 +126,12 @@
                             {
                                 PLAIN.Append("\r\n");
                             }
-                        }                        
-                        else
+                        }
+                        else if (!String.Equals("a", tag, StringComparison.OrdinalIgnoreCase)
+                                && !String.Equals("b", tag, StringComparison.OrdinalIgnoreCase)
+                                    && !String.Equals("i", tag, StringComparison.OrdinalIgnoreCase)
+                                        && !String.Equals("font", tag, StringComparison.OrdinalIgnoreCase)
+                                            && !String.Equals("span", tag, StringComparison.OrdinalIgnoreCase))
                         {
                             if (PLAIN.Length > 0)
                             {
@@ -165,7 +169,8 @@
                     {
                         Uri target = GetTargetUri(uri, href);
 
-                        if (target != null)
+                        if (target != null) 
+//                                        && target.ToString().IndexOf("cicero", StringComparison.OrdinalIgnoreCase) >= 0)
                         {
                             LINKS.Add(target);
                         }
@@ -307,6 +312,20 @@
 
         static void Cache(string html, string plain, Uri uri, string dir, string title)
         {
+            string pure = Purify(uri, plain);
+
+            if (string.IsNullOrWhiteSpace(pure))
+            {
+                return;
+            }
+
+            int bytes = Encoding.UTF8.GetByteCount(pure);
+
+            if (bytes < 1024)
+            {
+                return;
+            }
+
             var path = uri.AbsolutePath;
 
             if (string.IsNullOrWhiteSpace(path) || path == "/")
@@ -334,7 +353,6 @@
                     .Replace("|", "I")
                     .Replace(": ", " - ")
                     .Replace(":", " ")
-                    .Replace(".", " ")
                     .Replace("<", " ")
                     .Replace(">", " ")
                     .Replace("\t", " ")
@@ -346,15 +364,17 @@
                     title = title.Replace("  ", " ");
                 }
 
+                title += ".html";
+
                 try
                 {
-                    file = Path.ChangeExtension(Path.Combine(path, title), ".html");
+                    file = Path.Combine(path, title);
 
                     int i = 0;
 
                     while (File.Exists(file))
                     {
-                        file = Path.ChangeExtension(Path.Combine(path, title + $" [{i}]"), ".html");
+                        file = Path.Combine(path, title + $" [{i}]");
                         i++;
                     }
                 }
@@ -364,8 +384,83 @@
                 }
             }
             
-            File.WriteAllText(Path.ChangeExtension(file, ".html"), html, Encoding.UTF8);
-            File.WriteAllText(Path.ChangeExtension(file, ".txt"), plain, Encoding.UTF8);
+            // File.WriteAllText(Path.ChangeExtension(file, ".html").ToUpper(), html, Encoding.UTF8);
+
+            File.WriteAllText(Path.ChangeExtension(file, ".md").ToUpper(), pure, Encoding.UTF8);
+        }
+
+        static string Purify(Uri uri, string plain)
+        {
+            if (plain.IndexOf("Neo-Latin") >= 0 ||
+                        plain.IndexOf("Medieval Latin") >= 0 ||
+                plain.IndexOf("Christian Latin") >= 0 )
+            {
+                return null;
+            }
+
+            HashSet<String> WellKnownExcludes = new HashSet<String>();
+            WellKnownExcludes.Add("The Latin Library");
+            WellKnownExcludes.Add("The Classics Page");
+            WellKnownExcludes.Add("The Miscellany");
+            WellKnownExcludes.Add("Medieval Latin");
+            WellKnownExcludes.Add("Christian Latin");
+
+            foreach (var h in WellKnownExcludes)
+            {
+                int j = plain.IndexOf(h);
+
+                while (j >= 0)
+                {
+                    plain = plain.Remove(j, h.Length);
+                    j = plain.IndexOf(h);
+                }
+            }
+
+            StringBuilder PURE = new StringBuilder();
+
+            int i = 0; int len = plain.Length;
+
+            while (len > 0 && char.IsWhiteSpace(plain[len - 1]))
+            {
+                len--;
+            }
+
+            while (i < len)
+            {
+                char c = plain[i++];
+
+                if (c == '\r' || c == '\n')
+                {
+                    int extra = 0;
+
+                    while (i < len && (plain[i] == '\r' || plain[i] == '\n' || char.IsWhiteSpace(plain[i])))
+                    {
+                        if (plain[i] == '\n') extra++;
+                        i++;
+                    }
+
+                    PURE.Append("\r\n");
+
+                    if (extra > 1)
+                    {
+                        PURE.Append("\r\n");
+                    }
+
+                    if (extra > 2)
+                    {
+                        PURE.Append("\r\n");
+                    }
+                }
+                else
+                {
+                    PURE.Append(c);
+                }
+            }
+
+            PURE.Append("\r\n\r\n\r\n");
+            PURE.Append(uri.ToString());
+
+            return PURE.ToString();
         }
 
         static string GetParam(string key, string[] args)
